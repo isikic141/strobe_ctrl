@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STROBE CTRL</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #080808;
+    --panel: #0f0f0f;
+    --border: #1a1a1a;
+    --accent: #00ff88;
+    --accent2: #ff3300;
+    --accent3: #ffcc00;
+    --dim: #333;
+    --text: #cccccc;
+    --glow: 0 0 12px #00ff8866;
+    --glow2: 0 0 12px #ff330066;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,255,136,0.015) 2px,
+      rgba(0,255,136,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  h1 {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: clamp(1.4rem, 4vw, 2.2rem);
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    margin-bottom: 28px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 20px;
+    width: 100%;
+    max-width: 520px;
+    margin-bottom: 12px;
+  }
+
+  .panel-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    color: var(--dim);
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+
+  /* === DISPLAY === */
+  .display-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .display-value {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(3rem, 12vw, 5rem);
+    font-weight: 700;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    line-height: 1;
+    min-width: 5ch;
+    text-align: right;
+    transition: color 0.1s;
+  }
+
+  .display-unit {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.2rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+  }
+
+  .derived-display {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--dim);
+    margin-bottom: 16px;
+    letter-spacing: 0.1em;
+  }
+
+  .derived-display span {
+    color: var(--accent3);
+  }
+
+  /* mode toggle */
+  .mode-toggle {
+    display: flex;
+    gap: 0;
+    justify-content: center;
+    margin-bottom: 18px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .mode-btn {
+    background: transparent;
+    border: none;
+    color: var(--dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    padding: 8px 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .mode-btn.active {
+    background: var(--accent);
+    color: #000;
+    font-weight: bold;
+  }
+
+  /* === STEP BUTTONS === */
+  .step-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .step-pair {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .step-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 8px 4px;
+    cursor: pointer;
+    border-radius: 1px;
+    transition: all 0.1s;
+    text-align: center;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .step-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .step-btn:active { background: var(--accent); color: #000; }
+  .step-btn.plus { color: var(--accent); border-color: #1a3a2a; }
+  .step-btn.minus { color: var(--accent2); border-color: #2a1a1a; }
+  .step-btn.plus:hover { border-color: var(--accent); background: #0a2a1a; }
+  .step-btn.minus:hover { border-color: var(--accent2); background: #2a0a0a; }
+
+  .x2-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .x2-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--accent3);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 1px;
+    letter-spacing: 0.1em;
+    transition: all 0.1s;
+  }
+
+  .x2-btn:hover { border-color: var(--accent3); background: #2a2000; }
+  .x2-btn:active { background: var(--accent3); color: #000; }
+
+  /* === DUTY === */
+  .duty-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .slider-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+  }
+
+  .slider-label span { color: var(--accent3); }
+
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 3px;
+    background: var(--border);
+    border-radius: 0;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 0;
+    box-shadow: var(--glow);
+    cursor: pointer;
+  }
+
+  /* === PRESETS === */
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .preset-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    padding: 10px 4px 6px;
+    cursor: pointer;
+    border-radius: 1px;
+    transition: all 0.15s;
+    position: relative;
+    min-height: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .preset-btn.filled {
+    border-color: #2a3a2a;
+    color: var(--text);
+  }
+
+  .preset-btn.filled:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: #0a1a0a;
+  }
+
+  .preset-btn.active-preset {
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+    background: #0a2a1a;
+    box-shadow: var(--glow);
+  }
+
+  .preset-val {
+    font-size: 0.85rem;
+    font-family: 'Orbitron', monospace;
+    color: inherit;
+  }
+
+  .preset-unit {
+    font-size: 0.6rem;
+    color: var(--dim);
+  }
+
+  .preset-empty {
+    font-size: 1.4rem;
+    color: var(--border);
+  }
+
+  .preset-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .preset-action-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    padding: 7px;
+    cursor: pointer;
+    border-radius: 1px;
+    letter-spacing: 0.1em;
+    transition: all 0.1s;
+  }
+
+  .preset-action-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+  /* === MAIN START === */
+  .start-btn {
+    width: 100%;
+    max-width: 520px;
+    padding: 20px;
+    background: transparent;
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Orbitron', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.4em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+    box-shadow: var(--glow);
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .start-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .start-btn:hover::before { opacity: 0.08; }
+
+  .start-btn.running {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    box-shadow: var(--glow2);
+    animation: pulse-border 1s ease-in-out infinite;
+  }
+
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: var(--glow2); }
+    50% { box-shadow: 0 0 30px #ff330088; }
+  }
+
+  /* === STATUS === */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--dim);
+    width: 100%;
+    max-width: 520px;
+    padding: 8px 0;
+  }
+
+  .status-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--dim);
+    margin-right: 6px;
+    transition: background 0.2s;
+  }
+
+  .status-dot.active { background: var(--accent); box-shadow: var(--glow); }
+  .status-dot.error { background: var(--accent2); }
+
+  .vol-warn {
+    font-size: 0.6rem;
+    color: var(--accent3);
+    letter-spacing: 0.1em;
+    display: none;
+  }
+
+  .vol-warn.show { display: block; }
+
+  /* slits row */
+  .inline-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0;
+  }
+
+  .inline-label {
+    font-size: 0.7rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  .inline-input {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--accent3);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    padding: 6px 10px;
+    width: 70px;
+    text-align: center;
+    outline: none;
+    border-radius: 1px;
+  }
+
+  .inline-input:focus { border-color: var(--accent3); }
+</style>
+</head>
+<body>
+
+<h1>STROBE CTRL</h1>
+<p class="subtitle">AUDIO JACK STROBE CONTROLLER — ZOETROPE EDITION</p>
+
+<!-- FREQUENCY PANEL -->
+<div class="panel">
+  <div class="panel-title">▸ FREQUENCY CONTROL</div>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="modeHz" onclick="setMode('hz')">Hz</button>
+    <button class="mode-btn" id="modeRpm" onclick="setMode('rpm')">RPM</button>
+  </div>
+
+  <div class="display-row">
+    <div class="display-value" id="mainDisplay">10.0</div>
+    <div class="display-unit" id="mainUnit">Hz</div>
+  </div>
+
+  <div class="derived-display" id="derivedDisplay">
+    → RPM: <span id="derivedVal">25.0</span> &nbsp;|&nbsp; SLITS: <span id="slitsVal">24</span>
+  </div>
+
+  <!-- step buttons -->
+  <div class="step-grid">
+    <div class="step-pair">
+      <button class="step-btn plus" onclick="step(100)">+100</button>
+      <button class="step-btn minus" onclick="step(-100)">−100</button>
+    </div>
+    <div class="step-pair">
+      <button class="step-btn plus" onclick="step(10)">+10</button>
+      <button class="step-btn minus" onclick="step(-10)">−10</button>
+    </div>
+    <div class="step-pair">
+      <button class="step-btn plus" onclick="step(1)">+1</button>
+      <button class="step-btn minus" onclick="step(-1)">−1</button>
+    </div>
+    <div class="step-pair">
+      <button class="step-btn plus" onclick="step(0.1)">+0.1</button>
+      <button class="step-btn minus" onclick="step(-0.1)">−0.1</button>
+    </div>
+  </div>
+
+  <div class="x2-row">
+    <button class="x2-btn" onclick="multiply(2)">× 2</button>
+    <button class="x2-btn" onclick="multiply(0.5)">÷ 2</button>
+  </div>
+</div>
+
+<!-- DUTY CYCLE PANEL -->
+<div class="panel">
+  <div class="panel-title">▸ DUTY CYCLE (点灯時間の割合 — 短いほどシャープ)</div>
+  <div class="duty-row">
+    <div class="slider-label">
+      <span>DUTY</span>
+      <span id="dutyLabel">5%</span>
+    </div>
+    <input type="range" id="dutySlider" min="1" max="50" value="5" oninput="onDutyChange(this.value)">
+    <div class="slider-label" style="justify-content:space-between">
+      <span>1% — シャープ</span>
+      <span>50% — 明るい</span>
+    </div>
+  </div>
+</div>
+
+<!-- SLITS -->
+<div class="panel">
+  <div class="panel-title">▸ ZOETROPE SETTINGS</div>
+  <div class="inline-row">
+    <span class="inline-label">コマ数（スリット数）:</span>
+    <input type="number" class="inline-input" id="slitsInput" value="24" min="1" max="360" oninput="updateDerived()">
+    <span class="inline-label">コマ</span>
+  </div>
+</div>
+
+<!-- PRESETS -->
+<div class="panel">
+  <div class="panel-title">▸ PRESETS（クリックで即切替 / 長押しで保存）</div>
+  <div class="preset-grid" id="presetGrid"></div>
+  <div class="preset-actions">
+    <button class="preset-action-btn" onclick="clearPreset()">選択プリセットを削除</button>
+    <button class="preset-action-btn" onclick="clearAllPresets()">全削除</button>
+  </div>
+</div>
+
+<!-- START -->
+<button class="start-btn" id="startBtn" onclick="toggleStrobe()">▶ START</button>
+
+<div class="status-bar">
+  <div>
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">STOPPED</span>
+  </div>
+  <div class="vol-warn" id="volWarn">⚠ macOS音量を最大にしてください</div>
+</div>
+
+<script>
+// ========== STATE ==========
+let mode = 'hz';        // 'hz' or 'rpm'
+let hz = 10.0;
+let duty = 5;           // percent
+let slits = 24;
+let running = false;
+let selectedPreset = null;
+
+const MAX_PRESETS = 8;
+let presets = JSON.parse(localStorage.getItem('strobePresets') || 'null') || new Array(MAX_PRESETS).fill(null);
+
+// ========== AUDIO ==========
+let audioCtx = null;
+let oscillator = null;
+let gainNode = null;
+
+function ensureAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function startStrobe() {
+  ensureAudio();
+  oscillator = audioCtx.createOscillator();
+  gainNode = audioCtx.createGain();
+
+  // We use a PeriodicWave to generate a narrow pulse (low duty cycle square wave)
+  // instead of a standard square wave (which is 50% duty)
+  updateOscillatorParams();
+
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+  gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
+  oscillator.start();
+}
+
+function updateOscillatorParams() {
+  if (!oscillator) return;
+  oscillator.frequency.setValueAtTime(hz, audioCtx.currentTime);
+  // Note: duty cycle via PeriodicWave
+  applyDutyWave();
+}
+
+function applyDutyWave() {
+  if (!oscillator || !audioCtx) return;
+  // Build a narrow-pulse periodic wave via Fourier series
+  // Inverted: duty is now the OFF time, so signal is HIGH most of the time
+  // and dips LOW for a short pulse (inverted strobe)
+  const N = 256;
+  const real = new Float32Array(N);
+  const imag = new Float32Array(N);
+  const d = 1.0 - (duty / 100);  // invert duty: short silence instead of short pulse
+  real[0] = 0;
+  for (let n = 1; n < N; n++) {
+    const val = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * d);
+    imag[n] = val;
+    real[n] = 0;
+  }
+  const wave = audioCtx.createPeriodicWave(real, imag, { disableNormalization: false });
+  oscillator.setPeriodicWave(wave);
+}
+
+function stopStrobe() {
+  if (oscillator) {
+    oscillator.stop();
+    oscillator.disconnect();
+    oscillator = null;
+  }
+}
+
+// ========== UI LOGIC ==========
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeHz').classList.toggle('active', m === 'hz');
+  document.getElementById('modeRpm').classList.toggle('active', m === 'rpm');
+  updateDisplay();
+}
+
+function getCurrentValue() {
+  if (mode === 'hz') return hz;
+  return hzToRpm(hz);
+}
+
+function setValue(val) {
+  if (mode === 'hz') {
+    hz = Math.max(0.1, Math.round(val * 10) / 10);
+  } else {
+    const rpm = Math.max(0.1, Math.round(val * 10) / 10);
+    hz = rpmToHz(rpm);
+  }
+  updateDisplay();
+  if (running) updateOscillatorParams();
+}
+
+function step(delta) {
+  setValue(getCurrentValue() + delta);
+}
+
+function multiply(factor) {
+  setValue(getCurrentValue() * factor);
+}
+
+function hzToRpm(h) {
+  return (h / slits) * 60;
+}
+
+function rpmToHz(rpm) {
+  return (rpm * slits) / 60;
+}
+
+function updateDisplay() {
+  const val = getCurrentValue();
+  document.getElementById('mainDisplay').textContent = val.toFixed(1);
+  document.getElementById('mainUnit').textContent = mode === 'hz' ? 'Hz' : 'RPM';
+  updateDerived();
+  highlightActivePreset();
+}
+
+function updateDerived() {
+  slits = parseInt(document.getElementById('slitsInput').value) || 24;
+  const rpm = mode === 'hz' ? hzToRpm(hz) : getCurrentValue();
+  const hzVal = mode === 'hz' ? hz : rpmToHz(getCurrentValue());
+  if (mode === 'hz') {
+    document.getElementById('derivedDisplay').innerHTML =
+      `→ RPM: <span id="derivedVal">${rpm.toFixed(1)}</span> &nbsp;|&nbsp; SLITS: <span id="slitsVal">${slits}</span>`;
+  } else {
+    document.getElementById('derivedDisplay').innerHTML =
+      `→ Hz: <span id="derivedVal">${hzVal.toFixed(1)}</span> &nbsp;|&nbsp; SLITS: <span id="slitsVal">${slits}</span>`;
+  }
+}
+
+function onDutyChange(val) {
+  duty = parseInt(val);
+  document.getElementById('dutyLabel').textContent = duty + '%';
+  if (running) applyDutyWave();
+}
+
+// ========== PRESETS ==========
+function savePresets() {
+  localStorage.setItem('strobePresets', JSON.stringify(presets));
+}
+
+function renderPresets() {
+  const grid = document.getElementById('presetGrid');
+  grid.innerHTML = '';
+  presets.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn' + (p ? ' filled' : '') + (selectedPreset === i ? ' active-preset' : '');
+    btn.dataset.index = i;
+    if (p) {
+      btn.innerHTML = `<span class="preset-val">${p.hz.toFixed(1)}</span><span class="preset-unit">Hz</span>`;
+      btn.title = `${p.hz.toFixed(1)} Hz / ${hzToRpm(p.hz).toFixed(1)} RPM`;
+    } else {
+      btn.innerHTML = `<span class="preset-empty">+</span>`;
+    }
+    btn.addEventListener('click', () => onPresetClick(i));
+    // long press to save
+    let pressTimer;
+    btn.addEventListener('pointerdown', () => {
+      pressTimer = setTimeout(() => saveCurrentToPreset(i), 600);
+    });
+    btn.addEventListener('pointerup', () => clearTimeout(pressTimer));
+    btn.addEventListener('pointerleave', () => clearTimeout(pressTimer));
+    grid.appendChild(btn);
+  });
+}
+
+function onPresetClick(i) {
+  if (!presets[i]) {
+    saveCurrentToPreset(i);
+    return;
+  }
+  selectedPreset = i;
+  hz = presets[i].hz;
+  duty = presets[i].duty;
+  document.getElementById('dutySlider').value = duty;
+  document.getElementById('dutyLabel').textContent = duty + '%';
+  updateDisplay();
+  if (running) { updateOscillatorParams(); applyDutyWave(); }
+  renderPresets();
+}
+
+function saveCurrentToPreset(i) {
+  presets[i] = { hz, duty };
+  selectedPreset = i;
+  savePresets();
+  renderPresets();
+  flashMsg(`SLOT ${i+1} に保存しました`);
+}
+
+function clearPreset() {
+  if (selectedPreset !== null) {
+    presets[selectedPreset] = null;
+    savePresets();
+    selectedPreset = null;
+    renderPresets();
+  }
+}
+
+function clearAllPresets() {
+  presets = new Array(MAX_PRESETS).fill(null);
+  savePresets();
+  selectedPreset = null;
+  renderPresets();
+}
+
+function highlightActivePreset() {
+  // auto-highlight if hz matches a preset
+  const idx = presets.findIndex(p => p && Math.abs(p.hz - hz) < 0.05);
+  if (idx >= 0) selectedPreset = idx;
+}
+
+// ========== START/STOP ==========
+function toggleStrobe() {
+  if (!running) {
+    running = true;
+    startStrobe();
+    document.getElementById('startBtn').textContent = '■ STOP';
+    document.getElementById('startBtn').classList.add('running');
+    document.getElementById('statusDot').classList.add('active');
+    document.getElementById('statusText').textContent = 'RUNNING — ' + hz.toFixed(1) + ' Hz';
+    document.getElementById('volWarn').classList.add('show');
+  } else {
+    running = false;
+    stopStrobe();
+    document.getElementById('startBtn').textContent = '▶ START';
+    document.getElementById('startBtn').classList.remove('running');
+    document.getElementById('statusDot').classList.remove('active');
+    document.getElementById('statusText').textContent = 'STOPPED';
+    document.getElementById('volWarn').classList.remove('show');
+  }
+}
+
+// ========== KEYBOARD ==========
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  switch(e.key) {
+    case ' ': e.preventDefault(); toggleStrobe(); break;
+    case 'ArrowUp': step(1); break;
+    case 'ArrowDown': step(-1); break;
+    case 'ArrowRight': step(0.1); break;
+    case 'ArrowLeft': step(-0.1); break;
+    case ']': multiply(2); break;
+    case '[': multiply(0.5); break;
+    case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8':
+      onPresetClick(parseInt(e.key) - 1); break;
+  }
+});
+
+// ========== MIDI ==========
+if (navigator.requestMIDIAccess) {
+  navigator.requestMIDIAccess().then(midiAccess => {
+    for (let input of midiAccess.inputs.values()) {
+      input.onmidimessage = onMIDI;
+    }
+    midiAccess.onstatechange = e => {
+      if (e.port.type === 'input' && e.port.state === 'connected') {
+        e.port.onmidimessage = onMIDI;
+      }
+    };
+  }).catch(() => {});
+}
+
+function onMIDI(msg) {
+  const [status, data1, data2] = msg.data;
+  const type = status & 0xf0;
+  if (type === 0x90 && data2 > 0) {
+    // Note ON — map notes to presets (C4=60 to G4=67 → preset 1-8)
+    if (data1 >= 60 && data1 <= 67) {
+      onPresetClick(data1 - 60);
+    }
+    // C5=72 → toggle strobe
+    if (data1 === 72) toggleStrobe();
+  }
+  if (type === 0xb0) {
+    // CC — CC1 (mod wheel) controls Hz 0.1-30
+    if (data1 === 1) {
+      hz = 0.1 + (data2 / 127) * 29.9;
+      hz = Math.round(hz * 10) / 10;
+      updateDisplay();
+      if (running) updateOscillatorParams();
+    }
+  }
+}
+
+function flashMsg(msg) {
+  const el = document.getElementById('statusText');
+  const prev = el.textContent;
+  el.textContent = msg;
+  setTimeout(() => el.textContent = running ? 'RUNNING — ' + hz.toFixed(1) + ' Hz' : prev, 1500);
+}
+
+// ========== INIT ==========
+updateDisplay();
+renderPresets();
+</script>
+</body>
+</html>
